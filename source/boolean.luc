@@ -1,0 +1,28 @@
+module boolean (
+    input alufn[6],  
+    input b[16],
+    input a[16],
+    output b_out[16]
+  ) {
+  
+  var i;
+  var n;
+
+  always {
+    for(i=0; i<16; i++){          //iterate through all the bits in a and b starting from least significant bit
+      n = c{b[i], a[i]};          //create a 2bit number n which is ba.
+      case(n){
+        default:
+          b_out[i] = alufn[0];
+        b00:                     //n = 00, boolean bit[i] = alufn[0]
+          b_out[i] = alufn[0];
+        b01:                     //n = 01, boolean bit[i] = alufn[1]
+          b_out[i] = alufn[1];
+        b10:                     //n = 10, boolean bit[i] = alufn[2]
+          b_out[i] = alufn[2];
+        b11:                     //n = 11, boolean bit[i] = alufn[3]
+          b_out[i] = alufn[3];
+      }
+    }
+  }
+}

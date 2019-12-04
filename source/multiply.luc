@@ -1,0 +1,28 @@
+module multiply (
+    input a[8],                            
+    input b[8],
+    output m_out[16]
+  ) {
+  
+  sig s7[8];
+  sig s6[8];
+  sig s5[8];
+  sig s4[8];
+  sig s3[8];
+  sig s2[8];
+  sig s1[8];
+  sig s0[8];       //from the first bit to last bit
+  
+  //multiplication by breaking a and times one by one
+  always {
+   s7[7:0] = ((8 x{a[7]}) & (b[7:0])) << 7; //duplicating the 8th bit for input a and 
+   s6[7:0] = ((8 x{a[6]}) & (b[7:0])) << 6;
+   s5[7:0] = ((8 x{a[5]}) & (b[7:0])) << 5;
+   s4[7:0] = ((8 x{a[4]}) & (b[7:0])) << 4;
+   s3[7:0] = ((8 x{a[3]}) & (b[7:0])) << 3;
+   s2[7:0] = ((8 x{a[2]}) & (b[7:0])) << 2;
+   s1[7:0] = ((8 x{a[1]}) & (b[7:0])) << 1;
+   s0[7:0] = (8 x{a[0]}) & (b[7:0]);
+   m_out = s7 + s6 + s5 + s4 + s3 + s2 + s1 + s0;
+  }
+}

@@ -1,0 +1,30 @@
+module adder (
+    input alufn[1], //ADD or SUB
+    input a[16],  
+    input b[16],
+    output a_out[16], //result
+    output z, //16h0000
+    output v, //overflow
+    output n  //out[15]==1
+  ) {
+  
+  sig result[16];             
+
+  always {
+    case(alufn[0]){
+        default: //ADD
+          result = a+b; 
+          v = (((a[15]) & (b[15]) & (~result[15])) | ((~a[15]) & (~b[15]) & (result[15]))); 
+        b0: //a + b if alufn[0] = 0
+          result = a+b;
+          v = (((a[15]) & (b[15]) & (~result[15])) | ((~a[15]) & (~b[15]) & (result[15]))); //ADD overflow
+        b1: //a - b if alufn[0] = 1
+          result = a-b;
+          v = (((a[15]) & (~b[15]) & (~result[15])) | ((~a[15]) & (b[15]) & (result[15]))); //SUB underflow    
+    } 
+    a_out = result[15:0];     //the result of result is output (sum)
+    z = ~|result ;            //if all bits of result is 0 then z=1
+    n = result[15];          //if the sign bit is 1 then n = 1
+  }
+}
+

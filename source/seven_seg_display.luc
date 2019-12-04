@@ -1,0 +1,45 @@
+module seven_seg_display (
+    input clk,  // clock
+    input digit1[4],
+    input digit2[4],
+    input digit3[4],
+    output seg[12]
+  ) {
+    .clk(clk) {
+      dff digits[2];
+      fsm state={DISPLAY};
+    }
+  const ZERO=~b11101011;
+  const ONE=~b10001000;
+  const TWO=~b10110011;
+  const THREE=~b10111010;
+  const FOUR=~b11011000;
+  const FIVE=~b01111010;
+  const SIX=~b01111011;
+  const SEVEN=~b10101000;
+  const EIGHT=~b11111011;
+  const NINE=~b11111010;
+  const DIGITS={NINE,EIGHT,SEVEN,SIX,FIVE,FOUR,THREE,TWO,ONE,ZERO};
+  
+  always {
+    seg=b000000000000;
+    case(state.q) {
+      state.DISPLAY:
+        if (digits.q==0) {
+          seg=c{b1000,DIGITS[digit1]};
+        }
+        if (digits.q==1) {
+          seg=c{b0100,DIGITS[digit2]};
+        }
+        if (digits.q==2) {
+          seg=c{b0010,DIGITS[digit3]};
+        }
+        if (digits.q<=1) {
+          digits.d=digits.q+1;
+        }
+        else {
+          digits.d=0;
+        }
+    }
+  }
+}

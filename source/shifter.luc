@@ -1,0 +1,31 @@
+module shifter (
+    input a[16],                     
+    input b[16],
+    input alufn[6],
+    output s_out[16]
+  ) {
+  
+  multiply mul;                        //use multiply
+  
+  always {
+    mul.a = a[7:0];                   //inputs for multiply
+    mul.b = b[7:0];
+    case(alufn[1:0]){   
+      default:
+        s_out = a;    
+      b00:                            //alufn 00, SHL
+        s_out = a << b[3:0];          //<< shift left operator
+        
+      b01:                            //alufn 01, SHR
+        s_out = a >> b[3:0];
+        
+      b11:                            //alufn 11, SRA
+        s_out = $signed(a)>>>b[3:0];  // >>>signed shift right $signed(arg) 
+                                      //This function causes arg to be interpreted as a signed (two’s complement) value. 
+
+        
+      b10:
+        s_out = mul.m_out;           //alufn 10, no shift
+    }
+  }
+}

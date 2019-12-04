@@ -1,0 +1,461 @@
+module mojo_top #(
+    PIXEL_COUNT = 16 : PIXEL_COUNT > 0
+  )(
+    input clk,  // clock
+
+    output led_out[8],
+    input up,
+    input down,
+    input left,
+    input right,
+    input start,
+    input sel,
+    output seg [12],      // 7-segment LEDs on IO Shield
+    output seg_h [12]      // 7-segment LEDs on IO Shield
+  ) {
+
+  .clk(clk) {
+    edge_detector ed_up(#RISE(1), #FALL(0)); // detect rising edges
+    button_conditioner up_cond;
+    edge_detector ed_down(#RISE(1), #FALL(0)); // detect rising edges
+    button_conditioner down_cond;
+    edge_detector ed_left(#RISE(1), #FALL(0)); // detect rising edges
+    button_conditioner left_cond;
+    edge_detector ed_right(#RISE(1), #FALL(0)); // detect rising edges
+    button_conditioner right_cond;
+    edge_detector ed_start(#RISE(1), #FALL(0)); // detect rising edges
+    button_conditioner start_cond;
+    edge_detector ed_sel(#RISE(1), #FALL(0)); // detect rising edges
+    button_conditioner sel_cond;
+    fsm state = {FIRST, LVL_SEL, INITIAL, DISPLAY, LED_NEXT, DIGITS, PAUSE, CHECK0, CHECK1, CHECK2, CHECK3, CHECK4, CHECK5, CHECK6, CHECK7, BOARD, LEFT, RIGHT, UP, DOWN, SOLVED};
+
+      dff pixel_ctr[$clog2(PIXEL_COUNT)];
+      dff bit_ctr[5];
+      dff ctr[6];     
+      dff i [3];
+      dff h [4];
+      dff c [3];
+      
+      dff board[8][16];
+      dff blocks[8][16];
+      dff solution[8][16];
+      dff lvl;
+      
+      dff upd;
+      
+      dff moves[10];
+      
+      dff digit1[4];
+      dff digit2[4];
+      dff digit3[4];
+      
+      dff digit1_h[4];
+      dff digit2_h[4];
+      dff digit3_h[4];
+      
+      dff digit0_1_h[4];
+      dff digit0_2_h[4];
+      dff digit0_3_h[4];
+
+      dff digit1_1_h[4];
+      dff digit1_2_h[4];
+      dff digit1_3_h[4];
+
+  }
+  
+  const BLACK=h000000;
+  const GREEN=h000011;
+  const YELLOW=h001111;
+  const WHITE=h111111;
+  const RED=h001100;
+  
+  const COLOURS=c{{RED},{WHITE},{YELLOW},{GREEN},{BLACK}};
+        
+  seven_seg_counter ddc;
+  seven_seg_display ddp;
+  seven_seg_display ddhp;
+  initial_board initial;
+  
+  alu alu1;                 //creating instance of alu
+  
+  sig a[16];
+  sig b[16];
+  sig alufn[6];
+  sig alu_out[16];
+  sig rc[8];
+  
+  always {
+    up_cond.in = up;            // raw button input
+    ed_up.in = up_cond.out;
+    down_cond.in = down;            // raw button input
+    ed_down.in = down_cond.out;
+    left_cond.in = left;            // raw button input
+    ed_left.in = left_cond.out;
+    right_cond.in = right;            // raw button input
+    ed_right.in = right_cond.out;
+    start_cond.in = start;            // raw button input
+    ed_start.in = start_cond.out;
+    sel_cond.in = sel;            // raw button input
+    ed_sel.in = sel_cond.out;
+    
+    initial.clk=clk;
+    initial.lvl=0;
+    
+    ddc.digit1=0;
+    ddc.digit2=0;
+    ddc.digit3=0; 
+    ddc.upd=0;
+    
+    ddp.clk=clk;
+    ddp.digit1=digit1.q;
+    ddp.digit2=digit2.q;
+    ddp.digit3=digit3.q;
+    
+    ddhp.clk=clk;
+    ddhp.digit1=digit1_h.q;
+    ddhp.digit2=digit2_h.q;
+    ddhp.digit3=digit3_h.q;
+
+
+   
+    seg=ddp.seg;
+    seg_h=ddhp.seg;     
+    
+    a = 16b0;        //initial a
+    b = 16b0;        //initial b
+    alufn = b000000; //initial alufn
+    
+    alu1.alufn = alufn;   //setting alufn
+    alu1.a = a;           //setting alu a
+    alu1.b = b;           //setting alu b
+    alu_out = alu1.alu;   //getting alu output
+    
+    rc=b00000000;
+
+    
+    case (state.q) {
+    
+      state.FIRST:
+        digit0_1_h.d=9;
+        digit0_2_h.d=9;
+        digit0_3_h.d=9;
+  
+        digit1_1_h.d=9;
+        digit1_2_h.d=9;
+        digit1_3_h.d=9;
+  
+        ddc.digit1=digit1.q;
+        ddc.digit2=digit2.q;
+        ddc.digit3=digit3.q;
+
+        digit1_h.d=9;
+        digit2_h.d=9;
+        digit3_h.d=9;
+        
+        state.d=state.LVL_SEL;
+
+      state.LVL_SEL:
+        digit1.d=0;
+        digit2.d=0;
+        digit3.d=0;
+        if (ed_down.out) {
+          lvl.d=0;
+          digit1_h.d=digit0_1_h.q;
+          digit2_h.d=digit0_2_h.q;
+          digit3_h.d=digit0_3_h.q;
+          state.d=state.INITIAL;
+        }
+        else if (ed_up.out) {
+          lvl.d=1;
+          digit1_h.d=digit1_1_h.q;
+          digit2_h.d=digit1_2_h.q;
+          digit3_h.d=digit1_3_h.q;
+          state.d=state.INITIAL;
+        }
+
+      state.INITIAL:
+        initial.lvl=lvl.q;
+        blocks.d=initial.blocks;
+        solution.d=initial.solution;
+        board.d=initial.board;
+        state.d=state.DISPLAY;
+
+      state.DISPLAY:
+        if (board.q[i.q][pixel_ctr.q]==1 && solution.q[i.q][pixel_ctr.q]==1 && COLOURS[3][bit_ctr.q]) {
+          led_out[i.q] = ctr.q < 45;
+        }
+        else if (board.q[i.q][pixel_ctr.q]==1 && COLOURS[2][bit_ctr.q]) {
+          led_out[i.q] = ctr.q < 45;
+        }
+        else if (solution.q[i.q][pixel_ctr.q]==1 && COLOURS[1][bit_ctr.q]) {
+          led_out[i.q] = ctr.q < 45;
+        }
+        else if (blocks.q[i.q][pixel_ctr.q]==1 && COLOURS[4][bit_ctr.q]) {
+          led_out[i.q] = ctr.q < 45;
+        }
+        else {
+          led_out[i.q]= ctr.q < 17;
+        }
+        ctr.d = ctr.q + 1;
+        if (ctr.q == 62){
+          ctr.d = 0;
+          bit_ctr.d = bit_ctr.q + 1;
+          if (bit_ctr.q == 23) {
+            bit_ctr.d = 0;
+            pixel_ctr.d = pixel_ctr.q + 1;
+            if (pixel_ctr.q == PIXEL_COUNT-1) {
+              pixel_ctr.d = 0;
+              state.d=state.LED_NEXT;
+            }
+          }
+        }
+
+      state.LED_NEXT:
+        if (i.q<7) {
+          i.d=i.q+1;
+          state.d = state.DISPLAY;
+        }
+        else {
+          i.d=0;
+          if (upd.q) { state.d=state.DIGITS; }
+          else { state.d=state.BOARD; }
+        }
+
+      state.DIGITS:
+        alu1.alufn = 6b0; //ADD
+        alu1.a = moves.q; 
+        alu1.b = 1; 
+        moves.d=alu1.alu[0];
+        ddc.upd=upd.q;
+        ddc.digit1=digit1.q;
+        ddc.digit2=digit2.q;
+        ddc.digit3=digit3.q;
+        digit1.d=ddc.digit1_out;
+        digit2.d=ddc.digit2_out;
+        digit3.d=ddc.digit3_out;
+        upd.d=0;
+        state.d=state.CHECK0;
+        
+      state.CHECK0:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[0];
+        alu1.b=solution.q[0];
+        if (alu_out==1) { state.d=state.CHECK1; }
+        else { state.d=state.BOARD; }
+      
+      state.CHECK1:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[1];
+        alu1.b=solution.q[1];
+        if (alu_out==1) { state.d=state.CHECK2; }
+        else { state.d=state.BOARD; }
+
+      state.CHECK2:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[2];
+        alu1.b=solution.q[2];
+        if (alu_out==1) { state.d=state.CHECK3; }
+        else { state.d=state.BOARD; }
+        
+      state.CHECK3:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[3];
+        alu1.b=solution.q[3];
+        if (alu_out==1) { state.d=state.CHECK4; }
+        else { state.d=state.BOARD; }
+
+      state.CHECK4:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[4];
+        alu1.b=solution.q[4];
+        if (alu_out==1) { state.d=state.CHECK5; }
+        else { state.d=state.BOARD; }
+        
+      state.CHECK5:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[5];
+        alu1.b=solution.q[5];
+        if (alu_out==1) { state.d=state.CHECK6; }
+        else { state.d=state.BOARD; }
+        
+      state.CHECK6:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[6];
+        alu1.b=solution.q[6];
+        if (alu_out==1) { state.d=state.CHECK7; }
+        else { state.d=state.BOARD; }
+        
+      state.CHECK7:
+        alu1.alufn=6b110011; //CMPEQ
+        alu1.a=board.q[7];
+        alu1.b=solution.q[7];
+        if (alu_out==1) {
+          if (lvl.q==0) {
+            if (digit0_3_h.q>digit3.q) {
+              digit0_3_h.d=digit3.q;
+              digit0_2_h.d=digit2.q;
+              digit0_1_h.d=digit1.q;
+              digit1_h.d=digit0_1_h.q;
+              digit2_h.d=digit0_2_h.q;
+              digit3_h.d=digit0_3_h.q;
+            }
+            else if (digit0_3_h.q==digit3.q && digit0_2_h.q>digit2.q) {
+              digit0_2_h.d=digit2.q;
+              digit0_1_h.d=digit1.q;
+              digit1_h.d=digit0_1_h.q;
+              digit2_h.d=digit0_2_h.q;
+            }
+            else if (digit0_3_h.q==digit3.q && digit0_2_h.q==digit2.q && digit0_1_h.q>digit1.q) {
+              digit0_1_h.d=digit1.q;
+              digit1_h.d=digit0_1_h.q;
+            }
+          }
+          else if (lvl.q==1) {
+            if (digit1_3_h.q>digit3.q) {
+              digit1_3_h.d=digit3.q;
+              digit1_2_h.d=digit2.q;
+              digit1_1_h.d=digit1.q;
+              digit1_h.d=digit1_1_h.q;
+              digit2_h.d=digit1_2_h.q;
+              digit3_h.d=digit1_3_h.q;
+            }
+            else if (digit1_3_h.q==digit3.q && digit1_2_h.q>digit2.q) {
+              digit1_2_h.d=digit2.q;
+              digit1_1_h.d=digit1.q;
+              digit1_h.d=digit1_1_h.q;
+              digit2_h.d=digit1_2_h.q;
+            }
+            else if (digit1_3_h.q==digit3.q && digit1_2_h.q==digit2.q && digit1_1_h.q>digit1.q) {
+              digit1_1_h.d=digit1.q;
+              digit1_h.d=digit1_1_h.q;
+            }
+          }
+            
+          state.d=state.SOLVED;
+        }
+        else { state.d=state.BOARD; }
+      
+      state.PAUSE:
+        if (ed_start.out) {
+          state.d=state.BOARD;
+        }
+        else if (ed_sel.out) {
+          state.d=state.LVL_SEL;
+        }
+        
+      state.BOARD:
+        alu1.a=rc;
+        alu1.b=b11111111;
+        
+        if (upd.q) { state.d=state.DISPLAY; }
+        else if (ed_start.out) {
+          state.d=state.PAUSE;
+        }
+        else if (ed_up.out) {
+          h.d=0;
+          c.d=6;
+          state.d=state.UP;
+        }
+        else if (ed_down.out) {
+          h.d=0;
+          c.d=1;
+          state.d=state.DOWN;
+        }
+        else if (ed_left.out) {
+          h.d=3;
+          c.d=0;
+          state.d=state.LEFT;
+        }
+        else if (ed_right.out) {
+          h.d=12;
+          c.d=0;
+          state.d=state.RIGHT;
+        }
+        
+      state.UP:
+        if (board.q[c.q][h.q]) {
+          alu1.alufn = 6b011110; //OR
+          alu1.a=blocks.q[c.q+1][h.q];
+          alu1.b=board.q[c.q+1][h.q];
+          if (alu_out==0) {
+            board.d[c.q][h.q]=0;
+            board.d[c.q+1][h.q]=1;
+            upd.d=1;
+          }
+        }
+        if (c.q==0 && h.q==15) { state.d=state.BOARD; }
+        else if (c.q>=0) {
+          if (h.q<15) { h.d=h.q+1; }
+          else {
+            h.d=0;
+            c.d=c.q-1;
+          }
+        }
+      state.DOWN:
+        if (board.q[c.q][h.q]) {
+          alu1.alufn = 6b011110; //OR
+          alu1.a=blocks.q[c.q-1][h.q];
+          alu1.b=board.q[c.q-1][h.q];
+          if (alu_out==0) {
+            board.d[c.q][h.q]=0;
+            board.d[c.q-1][h.q]=1;
+            upd.d=1;
+          }
+        }
+        if (c.q==7 && h.q==15) { state.d=state.BOARD; }
+        else if (c.q<=7) {
+          if (h.q<15) { h.d=h.q+1; }
+          else {
+            h.d=0;
+            c.d=c.q+1;
+          }
+        }
+        
+      state.LEFT:
+        if (board.q[c.q][h.q]) {
+          alu1.alufn = 6b011110; //OR
+          alu1.a=blocks.q[c.q][h.q-2];
+          alu1.b=board.q[c.q][h.q-2];
+          if (alu_out==0) {
+            board.d[c.q][h.q]=0;
+            board.d[c.q][h.q-1]=0;
+            board.d[c.q][h.q-2]=1;
+            board.d[c.q][h.q-3]=1;
+            upd.d=1;
+          }
+        }
+        if (c.q==7 && h.q==15) { state.d=state.BOARD; }
+        else if (c.q<=7) {
+          if (h.q<15) { h.d=h.q+2; }
+          else {
+            h.d=3;
+            c.d=c.q+1;
+          }
+        }
+      state.RIGHT:
+        if (board.q[c.q][h.q]) {
+          alu1.alufn = 6b011110; //OR
+          alu1.a=blocks.q[c.q][h.q+2];
+          alu1.b=board.q[c.q][h.q+2];
+          if (alu_out==0) {
+            board.d[c.q][h.q]=0;
+            board.d[c.q][h.q+1]=0;
+            board.d[c.q][h.q+2]=1;
+            board.d[c.q][h.q+3]=1;
+            upd.d=1;
+          }
+        }
+        if (c.q==7 && h.q==0) { state.d=state.BOARD; }
+        else if (c.q<=7) {
+          if (h.q>0) { h.d=h.q-2; }
+          else {
+            h.d=12;
+            c.d=c.q+1;
+          }
+        }
+      
+      state.SOLVED:
+        if (ed_sel.out) { state.d=state.LVL_SEL; }
+    }
+  }
+}

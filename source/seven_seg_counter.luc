@@ -1,0 +1,35 @@
+module seven_seg_counter (
+  input upd,
+  input digit1[4],
+  input digit2[4],
+  input digit3[4],
+  output digit1_out[4],
+  output digit2_out[4],
+  output digit3_out[4]
+  ) {
+
+  always {
+    case (upd) {
+      b0:
+        digit3_out=digit3;
+        digit2_out=digit2;
+        digit1_out=digit1;
+      b1:
+        if (digit2==9 && digit1==9) {
+          digit3_out=digit3+1;
+          digit2_out=0;
+          digit1_out=0;
+        }
+        else if (digit1== 9) {
+          digit3_out=digit3;
+          digit2_out=digit2+1;
+          digit1_out=0;
+        }
+        else {
+          digit3_out=digit3;
+          digit2_out=digit2;
+          digit1_out=digit1+1;
+        }
+    }
+  }
+}

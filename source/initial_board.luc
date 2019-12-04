@@ -1,0 +1,82 @@
+module initial_board (
+    input lvl,
+    input clk,
+    output blocks[8][16],
+    output solution[8][16],
+    output board[8][16]
+  ) {
+    .clk(clk) {
+    }
+  
+  const BI0_7=b1100000000000000;
+  const BI0_6=b0011000000000000;
+  const BI0_5=b0000110000000000;
+  const BI0_4=b0000001100000000;
+  const BI0_3=b0000000011000000;
+  const BI0_2=b0000000000110000;
+  const BI0_1=b0000000000001100;
+  const BI0_0=b0000000000000011;
+
+  const BI1_7=b0000000000000000;
+  const BI1_6=b0000000000000000;
+  const BI1_5=b0000000011000011;
+  const BI1_4=b0000000000000000;
+  const BI1_3=b0000000000000000;
+  const BI1_2=b0000000011000011;
+  const BI1_1=b0000000000000000;
+  const BI1_0=b1100000000000000;
+  
+  const BB0_7=b0000111111110000;
+  const BB0_6=b0000111111110000;
+  const BB0_5=b0000000000000000;
+  const BB0_4=b0000000000000000;
+  const BB0_3=b0000000000000000;
+  const BB0_2=b0000000000000000;
+  const BB0_1=b0000111111110000;
+  const BB0_0=b0000111111110000;
+
+  const BB1_7=b0000000000000000;
+  const BB1_6=b0000000000000000;
+  const BB1_5=b0000000000000000;
+  const BB1_4=b0000001100110000;
+  const BB1_3=b0000000011000000;
+  const BB1_2=b0000001100110000;
+  const BB1_1=b0000000000000000;
+  const BB1_0=b0000000000000000;
+
+
+  const BS0_7=b0000000000000000;
+  const BS0_6=b0000000000000000;
+  const BS0_5=b0000000000001111;
+  const BS0_4=b0000000000001111;
+  const BS0_3=b0000000000001111;
+  const BS0_2=b0000000000001111;
+  const BS0_1=b0000000000000000;
+  const BS0_0=b0000000000000000;
+  
+  const BS1_7=b1100110000000000;
+  const BS1_6=b0011000000000000;
+  const BS1_5=b1100110000000000;
+  const BS1_4=b0000000000000000;
+  const BS1_3=b0000000000000000;
+  const BS1_2=b0000000000000000;
+  const BS1_1=b0000000000000000;
+  const BS1_0=b0000000000000000;
+
+  always {
+    case (lvl) {
+      default:
+        blocks=c{{BB0_7},{BB0_6},{BB0_5},{BB0_4},{BB0_3},{BB0_2},{BB0_1},{BB0_0}};
+        solution=c{{BS0_7},{BS0_6},{BS0_5},{BS0_4},{BS0_3},{BS0_2},{BS0_1},{BS0_0}};
+        board=c{{BI0_7},{BI0_6},{BI0_5},{BI0_4},{BI0_3},{BI0_2},{BI0_1},{BI0_0}};
+      b0:
+        blocks=c{{BB0_7},{BB0_6},{BB0_5},{BB0_4},{BB0_3},{BB0_2},{BB0_1},{BB0_0}};
+        solution=c{{BS0_7},{BS0_6},{BS0_5},{BS0_4},{BS0_3},{BS0_2},{BS0_1},{BS0_0}};
+        board=c{{BI0_7},{BI0_6},{BI0_5},{BI0_4},{BI0_3},{BI0_2},{BI0_1},{BI0_0}};
+      b1:
+        blocks=c{{BB1_7},{BB1_6},{BB1_5},{BB1_4},{BB1_3},{BB1_2},{BB1_1},{BB1_0}};
+        solution=c{{BS1_7},{BS1_6},{BS1_5},{BS1_4},{BS1_3},{BS1_2},{BS1_1},{BS1_0}};
+        board=c{{BI1_7},{BI1_6},{BI1_5},{BI1_4},{BI1_3},{BI1_2},{BI1_1},{BI1_0}};
+    }
+  }
+}
