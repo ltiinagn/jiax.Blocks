@@ -1,6 +1,4 @@
-module mojo_top #(
-    PIXEL_COUNT = 16 : PIXEL_COUNT > 0
-  )(
+module mojo_top (
     input clk,  // clock
 
     output led_out[8],
@@ -13,7 +11,15 @@ module mojo_top #(
     output seg [12],      // 7-segment LEDs on IO Shield
     output seg_h [12]      // 7-segment LEDs on IO Shield
   ) {
-
+  const PIXEL_COUNT=16;
+  const BLACK=h000000;
+  const GREEN=h000011;
+  const YELLOW=h001111;
+  const WHITE=h111111;
+  const RED=h001100;
+  
+  const COLOURS=c{{RED},{WHITE},{YELLOW},{GREEN},{BLACK}};
+  
   .clk(clk) {
     edge_detector ed_up(#RISE(1), #FALL(0)); // detect rising edges
     button_conditioner up_cond;
@@ -43,7 +49,7 @@ module mojo_top #(
       
       dff upd;
       
-      dff moves[10];
+      dff moves[9];
       
       dff digit1[4];
       dff digit2[4];
@@ -60,16 +66,10 @@ module mojo_top #(
       dff digit1_1_h[4];
       dff digit1_2_h[4];
       dff digit1_3_h[4];
+    
+      dff rst_ctr [12];
 
   }
-  
-  const BLACK=h000000;
-  const GREEN=h000011;
-  const YELLOW=h001111;
-  const WHITE=h111111;
-  const RED=h001100;
-  
-  const COLOURS=c{{RED},{WHITE},{YELLOW},{GREEN},{BLACK}};
         
   seven_seg_counter ddc;
   seven_seg_display ddp;
@@ -85,17 +85,17 @@ module mojo_top #(
   sig rc[8];
   
   always {
-    up_cond.in = up;            // raw button input
+    up_cond.in = up;
     ed_up.in = up_cond.out;
-    down_cond.in = down;            // raw button input
+    down_cond.in = down;
     ed_down.in = down_cond.out;
-    left_cond.in = left;            // raw button input
+    left_cond.in = left;
     ed_left.in = left_cond.out;
-    right_cond.in = right;            // raw button input
+    right_cond.in = right;
     ed_right.in = right_cond.out;
-    start_cond.in = start;            // raw button input
+    start_cond.in = start;
     ed_start.in = start_cond.out;
-    sel_cond.in = sel;            // raw button input
+    sel_cond.in = sel;
     ed_sel.in = sel_cond.out;
     
     initial.clk=clk;
@@ -115,9 +115,7 @@ module mojo_top #(
     ddhp.digit1=digit1_h.q;
     ddhp.digit2=digit2_h.q;
     ddhp.digit3=digit3_h.q;
-
-
-   
+    
     seg=ddp.seg;
     seg_h=ddhp.seg;     
     
@@ -131,10 +129,8 @@ module mojo_top #(
     alu_out = alu1.alu;   //getting alu output
     
     rc=b00000000;
-
     
     case (state.q) {
-    
       state.FIRST:
         digit0_1_h.d=9;
         digit0_2_h.d=9;
@@ -158,14 +154,14 @@ module mojo_top #(
         digit1.d=0;
         digit2.d=0;
         digit3.d=0;
-        if (ed_down.out) {
+        if (ed_up.out) {
           lvl.d=0;
           digit1_h.d=digit0_1_h.q;
           digit2_h.d=digit0_2_h.q;
           digit3_h.d=digit0_3_h.q;
           state.d=state.INITIAL;
         }
-        else if (ed_up.out) {
+        else if (ed_down.out) {
           lvl.d=1;
           digit1_h.d=digit1_1_h.q;
           digit2_h.d=digit1_2_h.q;
@@ -182,22 +178,22 @@ module mojo_top #(
 
       state.DISPLAY:
         if (board.q[i.q][pixel_ctr.q]==1 && solution.q[i.q][pixel_ctr.q]==1 && COLOURS[3][bit_ctr.q]) {
-          led_out[i.q] = ctr.q < 45;
+          led_out[i.q] = ctr.q < 42;
         }
         else if (board.q[i.q][pixel_ctr.q]==1 && COLOURS[2][bit_ctr.q]) {
-          led_out[i.q] = ctr.q < 45;
+          led_out[i.q] = ctr.q < 42;
         }
         else if (solution.q[i.q][pixel_ctr.q]==1 && COLOURS[1][bit_ctr.q]) {
-          led_out[i.q] = ctr.q < 45;
+          led_out[i.q] = ctr.q < 42;
         }
         else if (blocks.q[i.q][pixel_ctr.q]==1 && COLOURS[4][bit_ctr.q]) {
-          led_out[i.q] = ctr.q < 45;
+          led_out[i.q] = ctr.q < 42;
         }
         else {
-          led_out[i.q]= ctr.q < 17;
+          led_out[i.q]= ctr.q < 21;
         }
         ctr.d = ctr.q + 1;
-        if (ctr.q == 62){
+        if (ctr.q == 63){
           ctr.d = 0;
           bit_ctr.d = bit_ctr.q + 1;
           if (bit_ctr.q == 23) {
@@ -211,16 +207,22 @@ module mojo_top #(
         }
 
       state.LED_NEXT:
-        if (i.q<7) {
-          i.d=i.q+1;
-          state.d = state.DISPLAY;
-        }
+        if (&rst_ctr.q) {
+          rst_ctr.d = 0;
+          if (i.q<7) {
+            i.d=i.q+1;
+            state.d = state.DISPLAY;
+          }
+          else {
+            i.d=0;
+            if (upd.q) { state.d=state.DIGITS; }
+            else { state.d=state.BOARD; }
+          }
+        } 
         else {
-          i.d=0;
-          if (upd.q) { state.d=state.DIGITS; }
-          else { state.d=state.BOARD; }
+          rst_ctr.d = rst_ctr.q + 1;
         }
-
+        
       state.DIGITS:
         alu1.alufn = 6b0; //ADD
         alu1.a = moves.q; 
@@ -329,28 +331,21 @@ module mojo_top #(
               digit1_1_h.d=digit1.q;
               digit1_h.d=digit1_1_h.q;
             }
-          }
-            
+          }   
           state.d=state.SOLVED;
         }
         else { state.d=state.BOARD; }
       
       state.PAUSE:
-        if (ed_start.out) {
-          state.d=state.BOARD;
-        }
-        else if (ed_sel.out) {
-          state.d=state.LVL_SEL;
-        }
+        if (ed_start.out) { state.d=state.BOARD; }
+        else if (ed_sel.out) { state.d=state.LVL_SEL; }
         
       state.BOARD:
         alu1.a=rc;
         alu1.b=b11111111;
         
         if (upd.q) { state.d=state.DISPLAY; }
-        else if (ed_start.out) {
-          state.d=state.PAUSE;
-        }
+        else if (ed_start.out) { state.d=state.PAUSE; }
         else if (ed_up.out) {
           h.d=0;
           c.d=6;
@@ -432,6 +427,7 @@ module mojo_top #(
             c.d=c.q+1;
           }
         }
+
       state.RIGHT:
         if (board.q[c.q][h.q]) {
           alu1.alufn = 6b011110; //OR
